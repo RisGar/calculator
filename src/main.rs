@@ -17,6 +17,7 @@ enum Operator {
 }
 
 impl Operator {
+  /// [Order of operations](https://en.wikipedia.org/wiki/Order_of_operations)
   fn precedence(&self) -> i32 {
     match self {
       Operator::Add | Operator::Subtract => 1,
@@ -25,6 +26,7 @@ impl Operator {
     }
   }
 
+  /// [Operator associativity](https://en.wikipedia.org/wiki/Operator_associativity)
   fn associativity(&self) -> Associativity {
     match self {
       Operator::Add | Operator::Subtract | Operator::Multiply | Operator::Divide => {
@@ -37,8 +39,8 @@ impl Operator {
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 enum Parenthesis {
-  LParen,
-  RParen,
+  Left,
+  Right,
 }
 
 #[derive(PartialEq)]
@@ -49,17 +51,16 @@ enum Associativity {
 
 impl Associativity {
   fn is_left(&self) -> bool {
-    match self {
-      Associativity::Left => true,
-      Associativity::Right => false,
-    }
+    *self == Associativity::Left
   }
 
   fn is_right(&self) -> bool {
-    !self.is_left()
+    *self == Associativity::Right
   }
 }
 
+/// Convert a vector of tokens into reverse polish notation.
+/// ([Shunting Yard](https://aquarchitect.github.io/swift-algorithm-club/Shunting%20Yard/))
 fn shunting_yard(tokens: Vec<Token>) -> Vec<Token> {
   let mut output: Vec<Token> = Vec::new();
   let mut stack: Vec<Token> = Vec::new();
@@ -77,11 +78,11 @@ fn shunting_yard(tokens: Vec<Token>) -> Vec<Token> {
       }
       stack.push(token);
     }
-    Token::Parenthesis(parenthesis) => match parenthesis {
-      Parenthesis::LParen => stack.push(token),
-      Parenthesis::RParen => loop {
+    Token::Parenthesis(paren) => match paren {
+      Parenthesis::Left => stack.push(token),
+      Parenthesis::Right => loop {
         let popped = stack.pop().expect("Error: Mismatched parentheses");
-        if popped == Token::Parenthesis(Parenthesis::LParen) {
+        if popped == Token::Parenthesis(Parenthesis::Left) {
           break;
         }
         output.push(popped);
@@ -97,6 +98,7 @@ fn shunting_yard(tokens: Vec<Token>) -> Vec<Token> {
   output
 }
 
+/// Evaluate a reverse polish notation expression represented as a vector of tokens.
 fn evaluate_rpn(tokens: Vec<Token>) -> f32 {
   let mut stack: Vec<f32> = Vec::new();
 
@@ -120,7 +122,8 @@ fn evaluate_rpn(tokens: Vec<Token>) -> f32 {
   stack.pop().expect("Error: Invalid expression")
 }
 
-fn tokenise(str: &mut String) -> Vec<Token> {
+/// Tokenise a string into a vector of tokens.
+fn tokenise(str: &mut str) -> Vec<Token> {
   let mut tokens = Vec::new();
   let mut number_buffer = String::new();
 
@@ -154,12 +157,12 @@ fn tokenise(str: &mut String) -> Vec<Token> {
     '(' => push_non_number(
       &mut tokens,
       &mut number_buffer,
-      Token::Parenthesis(Parenthesis::LParen),
+      Token::Parenthesis(Parenthesis::Left),
     ),
     ')' => push_non_number(
       &mut tokens,
       &mut number_buffer,
-      Token::Parenthesis(Parenthesis::RParen),
+      Token::Parenthesis(Parenthesis::Right),
     ),
     _ => (),
   });
@@ -169,7 +172,9 @@ fn tokenise(str: &mut String) -> Vec<Token> {
   tokens
 }
 
+/// Push a non-number token onto the token vector and clear the number buffer in one go.
 fn push_non_number(tokens: &mut Vec<Token>, number_buffer: &mut String, token: Token) {
+  assert!(!matches!(token, Token::Number(_)));
   empty_number_buffer(tokens, number_buffer);
   tokens.push(token);
 }
